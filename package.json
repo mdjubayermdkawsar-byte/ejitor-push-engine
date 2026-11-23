@@ -1,9 +1,6 @@
 {
   "name": "ejitor-push-engine",
   "version": "1.0.0",
-  "description": "High-Speed FCM Push Notification Engine for Ejitor Studio",
-  "main": "api/send.js",
-  "dependencies": {
-    "firebase-admin": "^12.0.0"
-  }
+  "description": "EJITOR Push Notification API",
+  "main": "api/send.js"
 }
