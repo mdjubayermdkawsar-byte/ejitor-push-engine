@@ -1,6 +1,11 @@
 const https = require('https');
 const crypto = require('crypto');
 
+let localServiceAccount = null;
+try {
+  localServiceAccount = require('../serviceAccountKey.json');
+} catch (e) {}
+
 // ১. পুরোনো অ্যাপের জন্য Firebase Realtime Database-এ সেভ করা
 function sendToFirebaseDB(dataObj) {
   return new Promise((resolve, reject) => {
@@ -42,7 +47,7 @@ function base64url(input) {
     .replace(/\//g, '_');
 }
 
-// ৩. Service Account থেকে OAuth2 Access Token নেওয়া (কোনো প্যাকেজ ছাড়াই)
+// ৩. Service Account থেকে OAuth2 Access Token জেনারেট করা
 function getGoogleAccessToken(serviceAccount) {
   return new Promise((resolve, reject) => {
     const now = Math.floor(Date.now() / 1000);
@@ -103,12 +108,15 @@ function getGoogleAccessToken(serviceAccount) {
 
 // ৪. FCM HTTP v1 API দিয়ে "all" টপিকে Push Notification পাঠানো
 async function sendToFCM(title, body, image) {
-  const saRaw = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!saRaw) {
-    throw new Error('Vercel-এ FIREBASE_SERVICE_ACCOUNT Environment Variable সেট করা নেই!');
+  let serviceAccount = null;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } else if (localServiceAccount) {
+    serviceAccount = localServiceAccount;
+  } else {
+    throw new Error('serviceAccountKey.json অথবা FIREBASE_SERVICE_ACCOUNT পাওয়া যায়নি!');
   }
 
-  const serviceAccount = JSON.parse(saRaw);
   const accessToken = await getGoogleAccessToken(serviceAccount);
 
   const fcmPayload = JSON.stringify({
@@ -176,7 +184,6 @@ module.exports = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Title এবং Message দিন!' });
     }
 
-    // ডেটাবেস এবং FCM দুটোতেই একসাথে পাঠানো
     await Promise.all([
       sendToFirebaseDB({
         title: title,
